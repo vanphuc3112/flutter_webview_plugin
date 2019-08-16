@@ -31,6 +31,7 @@ class FlutterWebviewPlugin {
   final _onScrollYChanged = StreamController<double>.broadcast();
   final _onProgressChanged = new StreamController<double>.broadcast();
   final _onHttpError = StreamController<WebViewHttpError>.broadcast();
+  final _onPostMessage = StreamController<String>.broadcast();
 
   Future<Null> _handleMessages(MethodCall call) async {
     switch (call.method) {
@@ -49,8 +50,8 @@ class FlutterWebviewPlugin {
       case 'onScrollYChanged':
         _onScrollYChanged.add(call.arguments['yDirection']);
         break;
-      case "onProgressChanged":
-        _onProgressChanged.add(call.arguments["progress"]);
+      case 'onProgressChanged':
+        _onProgressChanged.add(call.arguments['progress']);
         break;
       case 'onState':
         _onStateChanged.add(
@@ -61,6 +62,9 @@ class FlutterWebviewPlugin {
         break;
       case 'onHttpError':
         _onHttpError.add(WebViewHttpError(call.arguments['code'], call.arguments['url']));
+        break;
+      case 'onPostMessage':
+        _onPostMessage.add(call.arguments['postMessage']);
         break;
     }
   }
@@ -90,6 +94,8 @@ class FlutterWebviewPlugin {
 
   Stream<WebViewHttpError> get onHttpError => _onHttpError.stream;
 
+  Stream<String> get onPostMessage => _onPostMessage.stream;
+
   /// Start the Webview with [url]
   /// - [headers] specify additional HTTP headers
   /// - [withJavascript] enable Javascript or not for the Webview
@@ -111,10 +117,6 @@ class FlutterWebviewPlugin {
   /// - [invalidUrlRegex] is the regular expression of URLs that web view shouldn't load.
   /// For example, when webview is redirected to a specific URL, you want to intercept
   /// this process by stopping loading this URL and replacing webview by another screen.
-  ///   Android only settings:
-  /// - [displayZoomControls]: display zoom controls on webview
-  /// - [withOverviewMode]: enable overview mode for Android webview ( setLoadWithOverviewMode )
-  /// - [useWideViewPort]: use wide viewport for Android webview ( setUseWideViewPort )
   Future<Null> launch(String url, {
     Map<String, String> headers,
     bool withJavascript,
@@ -125,10 +127,8 @@ class FlutterWebviewPlugin {
     Rect rect,
     String userAgent,
     bool withZoom,
-    bool displayZoomControls,
     bool withLocalStorage,
     bool withLocalUrl,
-    bool withOverviewMode,
     bool scrollBar,
     bool supportMultipleWindows,
     bool appCacheEnabled,
@@ -136,7 +136,6 @@ class FlutterWebviewPlugin {
     bool useWideViewPort,
     String invalidUrlRegex,
     bool geolocationEnabled,
-    bool debuggingEnabled,
   }) async {
     final args = <String, dynamic>{
       'url': url,
@@ -147,7 +146,6 @@ class FlutterWebviewPlugin {
       'enableAppScheme': enableAppScheme ?? true,
       'userAgent': userAgent,
       'withZoom': withZoom ?? false,
-      'displayZoomControls': displayZoomControls ?? false,
       'withLocalStorage': withLocalStorage ?? true,
       'withLocalUrl': withLocalUrl ?? false,
       'scrollBar': scrollBar ?? true,
@@ -157,8 +155,6 @@ class FlutterWebviewPlugin {
       'useWideViewPort': useWideViewPort ?? false,
       'invalidUrlRegex': invalidUrlRegex,
       'geolocationEnabled': geolocationEnabled ?? false,
-      'withOverviewMode': withOverviewMode ?? false,
-      'debuggingEnabled': debuggingEnabled ?? false,
     };
 
     if (headers != null) {
@@ -202,11 +198,8 @@ class FlutterWebviewPlugin {
   Future<Null> show() async => await _channel.invokeMethod('show');
 
   // Reload webview with a url
-  Future<Null> reloadUrl(String url, {Map<String, String> headers}) async {
-    final args = <String, dynamic>{'url': url};
-    if (headers != null) {
-      args['headers'] = headers;
-    }
+  Future<Null> reloadUrl(String url) async {
+    final args = <String, String>{'url': url};
     await _channel.invokeMethod('reloadUrl', args);
   }
 
@@ -225,6 +218,7 @@ class FlutterWebviewPlugin {
     _onScrollXChanged.close();
     _onScrollYChanged.close();
     _onHttpError.close();
+    _onPostMessage.close();
     _instance = null;
   }
 
